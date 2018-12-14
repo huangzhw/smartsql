@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
 ##############################
@@ -8,6 +8,8 @@
 ##############################
 
 import copy
+
+import six
 
 
 __all__ = ["QS", "T", "F", "E"]
@@ -24,6 +26,7 @@ def quote(name):
 ##################################################################
 
 class MetaTable(type):
+
     def __getattr__(cls, key):
         temp = key.split("__")
         name = quote(temp[0])
@@ -35,8 +38,8 @@ class MetaTable(type):
         return cls(name, alias)
 
 
+@six.add_metaclass(MetaTable)
 class Table(object):
-    __metaclass__ = MetaTable
 
     def __init__(self, name, alias=None):
         self._name = name
@@ -69,6 +72,7 @@ class Table(object):
 
 
 class TableSet(object):
+
     def __init__(self, join_obj):
         self._join_list = [join_obj]
 
@@ -118,6 +122,7 @@ class TableSet(object):
 
 
 class MetaField(type):
+
     def __getattr__(cls, key):
         temp = key.split("__")
         name = quote(temp[0])
@@ -130,8 +135,8 @@ class MetaField(type):
         return cls(name, prefix)
 
 
+@six.add_metaclass(MetaField)
 class Field(object):
-    __metaclass__ = MetaField
 
     def __init__(self, name, prefix=None):
         self._name = name
@@ -151,7 +156,7 @@ class Field(object):
             if len(f) < 1:
                 return Condition("FALSE")
 
-            sql = ", ".join(["%s" for i in xrange(len(f))])
+            sql = ", ".join(["%s" for i in six.moves.range(len(f))])
             return Condition("%s IN (%s)" % (self.sql, sql), list(f))
 
         return Condition(self.sql + " = %s", [f])
@@ -170,7 +175,7 @@ class Field(object):
             if len(f) < 1:
                 return Condition("TRUE")
 
-            sql = ", ".join(["%s" for i in xrange(len(f))])
+            sql = ", ".join(["%s" for i in six.moves.range(len(f))])
             return Condition("%s NOT IN (%s)" % (self.sql, sql), list(f))
 
         return Condition(self.sql + " <> %s", [f])
@@ -222,10 +227,11 @@ class Field(object):
 
     @property
     def sql(self):
-        return ".".join([self._prefix, self._name]) if self._prefix else self._name
+        return ".".join((self._prefix, self._name)) if self._prefix else self._name
 
 
 class Condition(object):
+
     def __init__(self, sql, params=None):
         self._sql = sql
         self._params = params if params else []
@@ -264,6 +270,7 @@ class Condition(object):
 
 
 class ConditionSet(object):
+
     OP_AND = 0
     OP_OR = 1
 
@@ -383,6 +390,7 @@ class ConditionSet(object):
 
 
 class Expr(object):
+
     def __init__(self, sql, *params):
         self.sql = sql
         self._params = params
@@ -443,6 +451,7 @@ class QuerySetDeepcopyHelper(object):
     """
         used to avoid deep copy the db
     """
+
     def __init__(self, db):
         self._db = db
 
@@ -454,6 +463,7 @@ class QuerySetDeepcopyHelper(object):
 
 
 class QuerySet(object):
+
     def __init__(self, db_or_t):
         # complex var
         self._db = None
@@ -475,25 +485,21 @@ class QuerySet(object):
         self._default_count_field_list = ("*",)
         self._default_count_distinct = False
 
-    @apply
-    def wheres():
-        def fget(self):
-            return self._wheres if self._wheres else ConditionSet()
+    def _get_wheres(self):
+        return self._wheres if self._wheres else ConditionSet()
 
-        def fset(self, cs):
-            self._wheres = cs
+    def _set_wheres(self, cs):
+        self._wheres = cs
 
-        return property(**locals())
+    wheres = property(_get_wheres, _set_wheres)
 
-    @apply
-    def havings():
-        def fget(self):
-            return self._havings if self._havings else ConditionSet()
+    def _get_havings(self):
+        return self._havings if self._havings else ConditionSet()
 
-        def fset(self, cs):
-            self._havings = cs
+    def _set_havings(self, cs):
+        self._havings = cs
 
-        return property(**locals())
+    havings = property(_get_havings, _set_havings)
 
     # public function
     def clone(self):
@@ -697,6 +703,7 @@ class QuerySet(object):
 
 
 class UnionPart(object):
+
     def __init__(self, sql, params, db=None):
         self.db = db
         self.sql = sql
@@ -716,6 +723,7 @@ class UnionPart(object):
 
 
 class UnionQuerySet(object):
+
     def __init__(self, up):
         self._db = up.db
         self._union_part_list = [(None, up)]
@@ -794,89 +802,89 @@ class UnionQuerySet(object):
 QS, T, F, E = QuerySet, Table, Field, Expr
 
 if __name__ == "__main__":
-    print
-    print "*******************************************"
-    print "************   Single Query   *************"
-    print "*******************************************"
-    print QS((T.base + T.grade).on((F.base__type == F.grade__item_type) & (F.base__type == 1)) + T.lottery).on(
+    print()
+    print("*******************************************")
+    print("************   Single Query   *************")
+    print("*******************************************")
+    print(QS((T.base + T.grade).on((F.base__type == F.grade__item_type) & (F.base__type == 1)) + T.lottery).on(
         F.base__type == F.lottery__item_type
     ).where(
         (F.name == "name") & (F.status == 0) | (F.name == None)
-    ).group_by("base.type").having(F("count(*)") > 1).select(F.type, F.grade__grade, F.lottery__grade)
+    ).group_by("base.type").having(F("count(*)") > 1).select(F.type, F.grade__grade, F.lottery__grade))
 
 
-    print
-    print "*******************************************"
-    print "**********  Step by Step Query   **********"
-    print "*******************************************"
+    print()
+    print("*******************************************")
+    print("**********  Step by Step Query   **********")
+    print("*******************************************")
     t = T.grade
-    print QS(t).limit(0,100).select(F.name)
-    print "==========================================="
+    print(QS(t).limit(0,100).select(F.name))
+    print("===========================================")
 
     t = (t * T.base).on(F.grade__item_type == F.base__type)
-    print QS(t).order_by(F.grade__name, F.base__name, desc=True).select(F.grade__name, F.base__img)
-    print "==========================================="
+    print(QS(t).order_by(F.grade__name, F.base__name, desc=True).select(F.grade__name, F.base__img))
+    print("===========================================")
 
     t = (t + T.lottery).on(F.base__type == F.lottery__item_type)
-    print QS(t).group_by(F.grade__grade).having(F.grade__grade > 0).select(F.grade__name, F.base__img, F.lottery__price)
-    print "==========================================="
+    print(QS(t).group_by(F.grade__grade).having(F.grade__grade > 0).select(F.grade__name, F.base__img, F.lottery__price))
+    print("===========================================")
 
     w = (F.base__type == 1)
-    print QS(t).where(w).select(F.grade__name, for_update=True)
-    print "==========================================="
+    print(QS(t).where(w).select(F.grade__name, for_update=True))
+    print("===========================================")
 
     w = w & (F.grade__status == [0,1])
-    print QS(t).where(w).group_by(F.grade__name, F.base__img).count()
-    print "==========================================="
+    print(QS(t).where(w).group_by(F.grade__name, F.base__img).count())
+    print("===========================================")
 
     from datetime import datetime
     w = w | (F.lottery__add_time > "2009-01-01") & (F.lottery__add_time <= datetime.now())
-    print QS(t).where(w).select_one(F.grade__name, F.base__img, F.lottery__price)
-    print "==========================================="
+    print(QS(t).where(w).select_one(F.grade__name, F.base__img, F.lottery__price))
+    print("===========================================")
 
     w = w & (F.base__status != [1, 2])
-    print QS(t).where(w).select(F.grade__name, F.base__img, F.lottery__price, "CASE 1 WHEN 1")
+    print(QS(t).where(w).select(F.grade__name, F.base__img, F.lottery__price, "CASE 1 WHEN 1"))
 
 
-    print
-    print "*******************************************"
-    print "**********  Step by Step Query2  **********"
-    print "*******************************************"
+    print()
+    print("*******************************************")
+    print("**********  Step by Step Query2  **********")
+    print("*******************************************")
     qs = QS(T.user)
-    print qs.select(F.name)
-    print "==========================================="
+    print(qs.select(F.name))
+    print("===========================================")
     qs.tables = (qs.tables * T.address).on(F.user__id == F.address__user_id)
-    print qs.select(F.user__name, F.address__street)
-    print "==========================================="
+    print(qs.select(F.user__name, F.address__street))
+    print("===========================================")
     qs.wheres = qs.wheres & (F.id == 1)
-    print qs.select(F.name, F.id)
-    print "==========================================="
+    print(qs.select(F.name, F.id))
+    print("===========================================")
     qs.wheres = qs.wheres & ((F.address__city_id == [111, 112]) | "address.city_id IS NULL")
-    print qs.select(F.user__name, F.address__street, "COUNT(*) AS count")
-    print "==========================================="
+    print(qs.select(F.user__name, F.address__street, "COUNT(*) AS count"))
+    print("===========================================")
 
-    print
-    print "*******************************************"
-    print "**********      Union Query      **********"
-    print "*******************************************"
+    print()
+    print("*******************************************")
+    print("**********      Union Query      **********")
+    print("*******************************************")
     a = QS(T.item).where(F.status != -1).select_for_union("type, name, img")
     b = QS(T.gift).where(F.storage > 0).select_for_union("type, name, img")
-    print (a + b).order_by("type", "name", desc=True).limit(100, 10).select()
+    print((a + b).order_by("type", "name", desc=True).limit(100, 10).select())
 
-    print
-    print "*******************************************"
-    print "**********    Other Operation    **********"
-    print "*******************************************"
-    print QS(T.user).insert({
+    print()
+    print("*******************************************")
+    print("**********    Other Operation    **********")
+    print("*******************************************")
+    print(QS(T.user).insert({
         "name": "garfield",
         "gender": "male",
         "status": 0
-    }, ignore=True)
-    print "==========================================="
+    }, ignore=True))
+    print("===========================================")
     fl = ("name", "gender", "status", "age")
     vl = (("garfield", "male", 0, 1), ("superwoman", "female", 0, 10))
-    print QS(T.user).insert_many(fl, vl, on_duplicate_key_update={"age" : E("age + VALUES(age)")})
-    print "==========================================="
-    print QS(T.user).where(F.id == 100).update({"name": "nobody", "status": 1}, ignore=True)
-    print "==========================================="
-    print QS(T.user).where(F.status == 1).delete()
+    print(QS(T.user).insert_many(fl, vl, on_duplicate_key_update={"age" : E("age + VALUES(age)")}))
+    print("===========================================")
+    print(QS(T.user).where(F.id == 100).update({"name": "nobody", "status": 1}, ignore=True))
+    print("===========================================")
+    print(QS(T.user).where(F.status == 1).delete())
